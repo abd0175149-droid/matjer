@@ -24,7 +24,7 @@
 | **المنطقة الزمنية** | Asia/Amman (+03) |
 | **اللغة** | en_US.UTF-8 |
 
-> **ملاحظة مهمة:** السيرفر هو جهاز Dell Inspiron 3593 يعمل كخادم منزلي/مكتبي على الشبكة المحلية، وليس خادماً سحابياً. الوصول عبر SSH يتم من داخل الشبكة المحلية (`192.168.100.0/24`). الدومينات العامة تُوجَّه عبر Cloudflare ثم CloudPanel إلى الحاويات (انظر القسم 4).
+> **ملاحظة مهمة:** السيرفر هو جهاز Dell Inspiron 3593 يعمل كخادم منزلي/مكتبي على الشبكة المحلية، وليس خادماً سحابياً، **وليس له IP عام ولا port-forwarding**. الوصول عبر SSH يتم من داخل الشبكة المحلية (`192.168.100.0/24`). أمّا الوصول العام من الإنترنت فيتم بالكامل عبر **Cloudflare Tunnel** (انظر القسم 4) — لا منافذ مفتوحة على الراوتر.
 
 ### الاتصال
 ```bash
@@ -49,8 +49,9 @@ ssh -i ~/.ssh/id_ed25519_mafia sysadmin@192.168.100.147
 | **npm** | 10.8.2 | إدارة الحزم ✅ |
 | **PostgreSQL (client)** | 16.13 | عميل psql (القاعدة نفسها تعمل كحاوية) ✅ |
 | **Redis (client)** | 7.0.15 | عميل redis-cli (Redis يعمل كحاوية) ✅ |
-| **nginx (نظامي)** | 1.28.0 | غير مستخدم مباشرة (CloudPanel يدير الـ proxy) |
-| **CloudPanel** | 6.0.8 (`clpctl`) | إدارة الدومينات + reverse proxy + شهادات SSL ✅ |
+| **cloudflared** | 2026.1.2 | **بوابة الوصول العام — Cloudflare Tunnel** ✅ (انظر القسم 4) |
+| **nginx (نظامي)** | 1.28.0 | غير مستخدم في مسار طلبات مشروعنا |
+| **CloudPanel** | 6.0.8 (`clpctl`) | لوحة إدارة (مكشوفة عبر `panel.grade.sbs`) — ليست في مسار طلبات الحاويات |
 | PHP | 8.4 (+ fpm متعددة) | غير مطلوب لمشروعنا |
 | Python | 3.12.3 | متاح عند الحاجة لسكربتات |
 | Java | openjdk 21 | غير مطلوب |
@@ -72,44 +73,95 @@ ssh -i ~/.ssh/id_ed25519_mafia sysadmin@192.168.100.147
 
 ---
 
-## 4. معمارية النشر المعتمدة (Deployment Architecture)
+## 4. معمارية النشر والوصول العام عبر Cloudflare Tunnel
 
-النمط المتّبع على هذا السيرفر (والمطبّق في `mafia-prod` المطابق لستاكنا) هو:
+> ⚠️ **نقطة جوهرية:** بما أنّ السيرفر منزلي بلا IP عام، **كل** الوصول من الإنترنت يمرّ عبر **Cloudflare Tunnel** واحد. لا يوجد reverse proxy على مستوى الأصل (nginx/CloudPanel) في مسار طلبات المشروع، ولا منافذ مفتوحة على الراوتر. الخدمة `cloudflared` تفتح اتصالاً **صادراً** (outbound) إلى شبكة Cloudflare، وتستقبل الطلبات منها وتوصّلها إلى المنافذ المحلية `127.0.0.1`.
 
+### 4.1 مخطّط مسار الطلب
 ```
-                الإنترنت
-                   │
-            ┌──────▼──────┐
-            │  Cloudflare │  (DNS + Proxy + WAF + SSL طرفي)
-            └──────┬──────┘
-                   │  *.grade.sbs
-            ┌──────▼───────────────┐
-            │  CloudPanel (nginx)   │  reverse proxy + Let's Encrypt
-            │  domain → :FRONTEND   │
-            └──────┬───────────────┘
-                   │ http://127.0.0.1:<FRONTEND_PORT>
-        ┌──────────▼───────────────────────────────┐
-        │      Docker Compose (مشروع matjer)         │
-        │                                            │
-        │  frontend (Next.js)  ──►  backend (NestJS) │
-        │     :FRONTEND_PORT          :BACKEND_PORT  │
-        │                              │      │      │
-        │                       ┌──────▼─┐ ┌──▼────┐ │
-        │                       │postgres│ │ redis │ │
-        │                       │(LAN  )│ │(LAN  )│ │  ← منفذان مربوطان بـ 127.0.0.1 فقط
-        │                       └────────┘ └───────┘ │
-        └────────────────────────────────────────────┘
+        الإنترنت (المستخدم)
+              │  https://matjer.grade.sbs
+        ┌─────▼──────────────────────────────┐
+        │   Cloudflare Edge                   │  SSL طرفي + WAF + DNS
+        │   (DNS: CNAME → <tunnel>.cfargotunnel.com)
+        └─────┬──────────────────────────────┘
+              │  نفق آمن (QUIC/HTTP2) — اتصال صادر من السيرفر
+        ┌─────▼──────────────────────────────┐
+        │   cloudflared (systemd service)     │  على السيرفر
+        │   /etc/cloudflared/config.yml       │  ← قواعد ingress (hostname/path → port)
+        └─────┬──────────────────────────────┘
+              │  http://127.0.0.1:<PORT>   (حسب القاعدة المطابقة)
+   ┌──────────▼──────────────────────────────────┐
+   │     Docker Compose (مشروع matjer)             │
+   │                                               │
+   │   /api/*  /uploads/*  ──►  backend  :4002     │
+   │   كل ما عدا ذلك       ──►  frontend :3020     │
+   │                              │                │
+   │   backend ──► database :5436 / redis :6383    │  (شبكة Docker الداخلية)
+   └───────────────────────────────────────────────┘
 ```
 
-**المبادئ:**
-1. كل المشروع داخل حاويات Docker تُدار بـ `docker compose`.
-2. **قاعدة البيانات و Redis تُنشَر على `127.0.0.1` فقط** (لا تُكشف خارجياً إطلاقاً).
-3. الواجهة والباكند يُنشران على منافذ المضيف، ثم **CloudPanel** يوجّه الدومين إلى منفذ الواجهة.
-4. الواجهة (Next.js) تتصل بالباكند داخلياً عبر شبكة Docker (`http://backend:<port>`)، لا عبر الإنترنت.
-5. الدومينات خلف **Cloudflare** (شهادة SSL طرفية + حماية)، وCloudPanel يدير الشهادة على مستوى الأصل.
-6. **الأسرار خارج Git** دائماً (`.env`، مفاتيح الخدمات).
+### 4.2 النفق الموجود على السيرفر
+| البند | القيمة |
+|-------|--------|
+| **اسم النفق** | `cloudpanel-tunnel` |
+| **معرّف النفق (Tunnel ID)** | `b8f315ec-a311-4b7a-8891-7b9e37a43f73` |
+| **التشغيل** | خدمة systemd: `cloudflared.service` (مفعّلة، `Restart=on-failure`) |
+| **الأمر** | `cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run` |
+| **ملف الإعداد (ingress)** | `/etc/cloudflared/config.yml` (مالكه root → تعديله يحتاج sudo) |
+| **ملف اعتماد النفق** 🔒 | `/home/sysadmin/.cloudflared/b8f315ec-...json` (سرّي، صلاحية 0400) |
+| **شهادة الحساب** 🔒 | `/home/sysadmin/.cloudflared/cert.pem` (تُستخدم لإدارة DNS routes) |
 
-> **الدومين المقترح للمشروع:** `matjer.grade.sbs` (أو نطاق يحدّده المالك) — يُضاف كموقع reverse-proxy في CloudPanel يشير إلى منفذ الواجهة. يتطلّب إضافة سجل DNS في Cloudflare.
+> **نفق واحد مشترك** يخدم كل مشاريع السيرفر (mafia، club-mafia، howplatform، shalamoneh، CloudPanel نفسه…). إضافة مشروعنا = إضافة قواعد ingress جديدة لنفس النفق، لا إنشاء نفق منفصل.
+
+### 4.3 كيف تُعرّف قواعد التوجيه (Ingress) — نمطان مستخدمان فعلياً
+ملف `config.yml` قائمة قواعد تُطابَق **بالترتيب من الأعلى**، وآخر قاعدة دائماً `http_status:404`. هناك نمطان قائمان على السيرفر:
+
+**النمط (أ) — توجيه حسب المسار (path-based)** — مستخدم في `mafia.grade.sbs`، وهو **الموصى به لمشروعنا** لأنّ الباكند (NestJS) منفصل:
+```yaml
+  - hostname: matjer.grade.sbs
+    path: /api/.*
+    service: http://127.0.0.1:4002      # backend
+  - hostname: matjer.grade.sbs
+    path: /uploads/.*
+    service: http://127.0.0.1:4002      # backend (الملفات المرفوعة)
+  - hostname: matjer.grade.sbs
+    service: http://127.0.0.1:3020      # frontend (كل ما عدا ذلك)
+```
+
+**النمط (ب) — قاعدة واحدة للواجهة** — مستخدم في `club-mafia.grade.sbs → 127.0.0.1:3010`؛ تصلح إذا كانت الواجهة (Next.js) نفسها توكّل `/api` للباكند داخلياً عبر rewrites/proxy:
+```yaml
+  - hostname: matjer.grade.sbs
+    service: http://127.0.0.1:3020      # frontend فقط
+```
+
+### 4.4 خطوات ربط مشروع matjer بالنفق (مرة واحدة)
+1. **اختر منافذ حرّة** للخدمات (انظر القسم 5) وتأكّد أنّ cloudflared سيصلها على `127.0.0.1`.
+2. **أنشئ سجل DNS** يربط الدومين بالنفق (يستخدم `cert.pem`):
+   ```bash
+   cloudflared tunnel route dns cloudpanel-tunnel matjer.grade.sbs
+   ```
+   هذا ينشئ CNAME مُوكّلاً (proxied) `matjer.grade.sbs → b8f315ec-...cfargotunnel.com` في Cloudflare.
+3. **أضف قواعد ingress** لمشروعنا في `/etc/cloudflared/config.yml` **قبل** قاعدة `- service: http_status:404` الأخيرة (يتطلّب sudo):
+   ```bash
+   sudo cp /etc/cloudflared/config.yml /etc/cloudflared/config.yml.bak.$(date +%F)   # نسخة احتياطية أولاً
+   sudo nano /etc/cloudflared/config.yml                                            # أضف كتلة matjer (النمط أ)
+   ```
+4. **أعد تشغيل الخدمة** لتطبيق التغيير:
+   ```bash
+   sudo systemctl restart cloudflared
+   sudo systemctl status cloudflared --no-pager        # تأكّد أنّها active
+   journalctl -u cloudflared -f                         # متابعة السجلات والتحقق من التوجيه
+   ```
+
+### 4.5 مبادئ مهمة
+1. **SSL يُنهى عند حافة Cloudflare** — لا حاجة لشهادات على السيرفر للمشروع (HTTPS مجاني وتلقائي عبر الدومين).
+2. **لا منافذ مكشوفة خارجياً** — cloudflared يصل الخدمات عبر `127.0.0.1` فقط؛ لذا نربط حتى الواجهة والباكند بـ `127.0.0.1` في docker-compose (انظر القسم 6).
+3. **WebSocket مدعوم** عبر النفق (يُستخدم فعلياً في socket.io لمشاريع أخرى) — مفيد لتحديثات لحظية مستقبلية.
+4. **النفق نقطة فشل مشتركة** — أي خطأ في `config.yml` قد يؤثّر على كل المشاريع؛ خُذ نسخة احتياطية قبل أي تعديل (النمط متّبع: ملفات `config.yml.bak.*` موجودة على السيرفر).
+5. **الأسرار خارج Git** دائماً: ملف اعتماد النفق و`cert.pem` و`.env` لا تُرفع إطلاقاً.
+
+> **الدومين المقترح:** `matjer.grade.sbs` (نطاق `grade.sbs` مُدار في Cloudflare ويُستخدم لباقي المشاريع). يمكن للمالك اختيار نطاق آخر؛ الخطوات نفسها.
 
 ---
 
@@ -119,11 +171,13 @@ ssh -i ~/.ssh/id_ed25519_mafia sysadmin@192.168.100.147
 
 | الخدمة | المتغيّر | المنفذ المقترح | الكشف |
 |--------|----------|----------------|-------|
-| الواجهة (Next.js) | `FRONTEND_PORT` | **3020** | منفذ المضيف (يوجّهه CloudPanel) |
-| الباكند (NestJS) | `BACKEND_PORT` | **4002** | منفذ المضيف |
+| الواجهة (Next.js) | `FRONTEND_PORT` | **3020** | `127.0.0.1` فقط 🔒 (يصله cloudflared) |
+| الباكند (NestJS) | `BACKEND_PORT` | **4002** | `127.0.0.1` فقط 🔒 (يصله cloudflared لمسار `/api`) |
 | قاعدة البيانات (Postgres) | `DB_PORT` | **5436** | `127.0.0.1` فقط 🔒 |
 | Redis | `REDIS_PORT` | **6383** | `127.0.0.1` فقط 🔒 |
 | اسم مشروع compose | `COMPOSE_PROJECT_NAME` | **matjer** | — |
+
+> مع Cloudflare Tunnel **لا يلزم كشف أي منفذ خارجياً** — كل المنافذ مربوطة بـ `127.0.0.1`، وcloudflared (يعمل على نفس المضيف) يصلها محلياً وينقل الطلبات من/إلى الإنترنت عبر النفق.
 
 > منافذ مشغولة يجب تجنّبها (للمرجع): 3000، 3010، 3050، 4000، 4001، 4010، 4020، 4040، 4050، 4060، 4070، 5432–5435، 6379–6382، 8000، 8080، 8082، 8096، 8123. تحقّق دائماً قبل النشر بـ `docker ps` و`ss -tlnH`.
 
@@ -183,7 +237,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}"   # 🔒 يصله cloudflared محلياً فقط
     depends_on: [database, redis]
     volumes:
       - uploads_data:/app/uploads
@@ -200,7 +254,7 @@ services:
       - BACKEND_URL=http://backend:${BACKEND_PORT}
       - HOSTNAME=0.0.0.0
     ports:
-      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+      - "127.0.0.1:${FRONTEND_PORT}:${FRONTEND_PORT}"   # 🔒 يصله cloudflared محلياً فقط
     depends_on: [backend]
 
 volumes:
@@ -243,7 +297,13 @@ docker compose build
 docker compose up -d
 docker compose ps               # تحقّق من تشغيل الخدمات
 ```
-ثم في CloudPanel: إنشاء موقع **Reverse Proxy** للدومين `matjer.grade.sbs` يشير إلى `http://127.0.0.1:3020`، وإصدار شهادة SSL.
+ثم اربط الدومين بالنفق (مرة واحدة — انظر تفاصيل القسم 4.4):
+```bash
+cloudflared tunnel route dns cloudpanel-tunnel matjer.grade.sbs   # إنشاء DNS CNAME
+sudo nano /etc/cloudflared/config.yml      # أضف قواعد ingress لـ matjer (قبل قاعدة 404)
+sudo systemctl restart cloudflared         # تطبيق التوجيه
+```
+لا حاجة لإصدار شهادة SSL يدوياً — تُنهى تلقائياً عند حافة Cloudflare.
 
 ### ج. التحديثات اللاحقة — سكربت `deploy.sh`
 نمط السكربت المعتمد على السيرفر (مبني على `mafia-prod/deploy.sh`):
@@ -319,11 +379,12 @@ ssh mafia-prod 'cd /home/sysadmin/matjer && ./deploy.sh'
 ## 9. الأمان والنسخ الاحتياطي (Security & Backups)
 
 ### الأمان
-- قاعدة البيانات و Redis **لا يُكشفان خارجياً** (ربط `127.0.0.1` فقط).
-- كل الأسرار في `.env` خارج Git (مدرجة في `.gitignore`).
-- SSL عبر Cloudflare + CloudPanel (HTTPS إلزامي).
+- **كل خدمات المشروع مربوطة بـ `127.0.0.1`** (واجهة، باكند، قاعدة، Redis) — لا شيء مكشوف على LAN أو الإنترنت مباشرةً.
+- الوصول العام **حصراً عبر Cloudflare Tunnel** (لا منافذ مفتوحة على الراوتر، لا IP عام) + حماية Cloudflare (WAF/DDoS) على الحافة.
+- SSL يُنهى تلقائياً عند **حافة Cloudflare** (HTTPS إلزامي) — لا شهادات تُدار على السيرفر للمشروع.
+- كل الأسرار في `.env` + ملف اعتماد النفق + `cert.pem` خارج Git (مدرجة في `.gitignore`).
 - مفتاح SSH فقط للوصول (لا كلمات مرور).
-- (مطلوب لاحقاً) تفعيل جدار ufw وفتح المنافذ الضرورية فقط.
+- تعديل `/etc/cloudflared/config.yml` يحتاج sudo + نسخة احتياطية (نقطة فشل مشتركة لكل المشاريع).
 
 ### النسخ الاحتياطي (نمط معتمد على السيرفر)
 نمط أخذ نسخة من قاعدة البيانات قبل أي تغيير كبير (مطبّق في مشاريع أخرى على السيرفر):
@@ -342,5 +403,7 @@ docker compose exec -T database pg_dump -U matjer_user matjer_db \
 | القرص ممتلئ 84% (~74GB متبقٍّ) | قد يفشل البناء/النسخ | تنظيف صور Docker دورياً `docker system prune`؛ مراقبة المساحة |
 | الذاكرة محمّلة (8.3/15GB + Swap 5.2/6GB) | بطء عند الذروة | تخفيف بناء `--no-cache`؛ مراقبة الموارد |
 | السيرفر منزلي على LAN | لا توفّر سحابي (انقطاع كهرباء/إنترنت) | نسخ احتياطي خارجي؛ خطة ترحيل لسحابة عند التوسّع |
-| sudo يتطلّب كلمة مرور | عمليات النظام تحتاج تدخّل يدوي | Docker يعمل بدون sudo؛ معظم النشر لا يحتاج sudo |
+| النفق مشترك لكل المشاريع | خطأ في `config.yml` يعطّل الجميع | نسخة احتياطية قبل كل تعديل؛ التحقق بـ `journalctl -u cloudflared` بعد الإعادة |
+| النفق يعتمد على cloudflared + Cloudflare | تعطّل الخدمة = انقطاع الوصول العام | `Restart=on-failure` مفعّل؛ مراقبة حالة الخدمة |
+| sudo يتطلّب كلمة مرور | عمليات النظام (تعديل النفق) تحتاج تدخّل يدوي | Docker يعمل بدون sudo؛ النشر نفسه لا يحتاج sudo |
 | منافذ مشتركة مع مشاريع أخرى | تعارض محتمل | التزام المنافذ المخصّصة (القسم 5) والتحقق قبل النشر |

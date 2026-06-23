@@ -26,6 +26,6 @@
 - **الواجهة:** Next.js (React) + Tailwind CSS — متجر + لوحة ERP
 - **الباكند:** Node.js + NestJS — REST API + JWT
 - **قاعدة البيانات:** PostgreSQL + Redis
-- **النشر:** Docker Compose خلف CloudPanel + Cloudflare
+- **النشر:** Docker Compose عبر Cloudflare Tunnel (بلا IP عام)
 
 > الحالة الحالية: **مرحلة التوثيق والتخطيط.** كود التطبيق قيد التجهيز.
