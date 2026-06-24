@@ -34,4 +34,25 @@ export class AuthController {
   me(@CurrentUser() user: AuthUser) {
     return this.users.getProfile(user.id);
   }
+
+  @Public()
+  @Post('logout')
+  logout(@Body() body: { refreshToken?: string }) {
+    return this.auth.logout(body?.refreshToken);
+  }
+
+  @Post('2fa/setup')
+  setup2fa(@CurrentUser() user: AuthUser) {
+    return this.auth.setup2fa(user.id, user.email);
+  }
+
+  @Post('2fa/enable')
+  enable2fa(@CurrentUser() user: AuthUser, @Body() body: { code: string }) {
+    return this.auth.enable2fa(user.id, body.code);
+  }
+
+  @Post('2fa/disable')
+  disable2fa(@CurrentUser() user: AuthUser, @Body() body: { code: string }) {
+    return this.auth.disable2fa(user.id, body.code);
+  }
 }

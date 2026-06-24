@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
@@ -20,10 +21,13 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ProcurementModule } from './modules/procurement/procurement.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ContentModule } from './modules/content/content.module';
+import { CrmModule } from './modules/crm/crm.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(), // مهام مجدولة (إلغاء الحجز التلقائي)
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]), // errata R-10: طبقة ثانية
     PrismaModule,
     RedisModule,
@@ -43,6 +47,8 @@ import { ReportsModule } from './modules/reports/reports.module';
     AuditModule,
     ProcurementModule,
     ReportsModule,
+    ContentModule,
+    CrmModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

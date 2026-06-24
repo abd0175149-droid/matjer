@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useCart } from '@/store/cart';
 import { useAuth } from '@/store/auth';
+import SearchBox from '@/components/SearchBox';
 
 const CATS = [
   { slug: 'sets', name: 'أطقم' },
@@ -13,17 +13,10 @@ const CATS = [
 ];
 
 export default function Header() {
-  const router = useRouter();
   const count = useCart((s) => s.count());
   const user = useAuth((s) => s.user);
   const [mounted, setMounted] = useState(false);
-  const [q, setQ] = useState('');
   useEffect(() => setMounted(true), []);
-
-  const search = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
-  };
 
   return (
     <header className="bg-white border-b border-black/5 sticky top-0 z-40">
@@ -32,14 +25,9 @@ export default function Header() {
           متجـر <span className="text-ink">الذهب</span>
         </Link>
 
-        <form onSubmit={search} className="hidden md:block flex-1 max-w-sm">
-          <input
-            className="input !py-2 text-sm"
-            placeholder="ابحث عن منتج..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </form>
+        <div className="hidden md:block flex-1 max-w-sm">
+          <SearchBox />
+        </div>
 
         <nav className="hidden lg:flex items-center gap-4 text-sm font-medium">
           {CATS.map((c) => (

@@ -10,20 +10,43 @@ export default function AdminReports() {
   const [top, setTop] = useState<any[]>([]);
   const [inv, setInv] = useState<any>(null);
   const [cust, setCust] = useState<any>(null);
+  const [profit, setProfit] = useState<any>(null);
+  const [range, setRange] = useState({ from: '', to: '' });
 
-  useEffect(() => {
-    apiGet('/admin/reports/sales', h()).then(setSales).catch(() => {});
+  const load = () => {
+    const q = new URLSearchParams(); if (range.from) q.set('from', range.from); if (range.to) q.set('to', range.to);
+    const s = q.toString() ? `?${q}` : '';
+    apiGet(`/admin/reports/sales${s}`, h()).then(setSales).catch(() => {});
+    apiGet(`/admin/reports/profit${s}`, h()).then(setProfit).catch(() => {});
     apiGet('/admin/reports/top-products', h()).then(setTop).catch(() => {});
     apiGet('/admin/reports/inventory', h()).then(setInv).catch(() => {});
     apiGet('/admin/reports/customers', h()).then(setCust).catch(() => {});
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
+
+  const exportCsv = async () => {
+    const q = new URLSearchParams(); if (range.from) q.set('from', range.from); if (range.to) q.set('to', range.to);
+    const res = await fetch(`/api/admin/reports/orders.csv?${q}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    const blob = await res.blob();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'orders.csv'; a.click();
+  };
 
   return (
     <div>
       <h1 className="text-2xl font-extrabold mb-6">التقارير</h1>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="card p-4"><div className="text-sm text-black/50">الإيراد المحصّل</div><div className="text-xl font-extrabold text-gold-dark">{money(sales?.paidRevenue ?? 0)}</div></div>
-        <div className="card p-4"><div className="text-sm text-black/50">طلبات مدفوعة</div><div className="text-xl font-extrabold">{sales?.paidOrders ?? 0}</div></div>
+
+      <div className="card p-3 mb-4 flex flex-wrap gap-2 items-center">
+        <span className="text-sm font-bold">الفترة:</span>
+        <input className="input w-auto" type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} />
+        <input className="input w-auto" type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} />
+        <button className="btn-gold !py-1.5" onClick={load}>تطبيق</button>
+        <button className="btn-outline !py-1.5 mr-auto" onClick={exportCsv}>تصدير الطلبات CSV</button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="card p-4"><div className="text-sm text-black/50">إيراد الفترة</div><div className="text-xl font-extrabold text-gold-dark">{money(sales?.periodRevenue ?? 0)}</div></div>
+        <div className="card p-4"><div className="text-sm text-black/50">ربح تقديري</div><div className="text-xl font-extrabold text-green-700">{money(profit?.grossProfit ?? 0)}</div></div>
+        <div className="card p-4"><div className="text-sm text-black/50">طلبات الفترة</div><div className="text-xl font-extrabold">{sales?.periodOrders ?? 0}</div></div>
         <div className="card p-4"><div className="text-sm text-black/50">قيمة المخزون</div><div className="text-xl font-extrabold">{money(inv?.stock_value ?? 0)}</div></div>
         <div className="card p-4"><div className="text-sm text-black/50">العملاء</div><div className="text-xl font-extrabold">{cust?.totalCustomers ?? 0}</div></div>
       </div>

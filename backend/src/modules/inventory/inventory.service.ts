@@ -136,4 +136,29 @@ export class InventoryService {
       take: 100,
     });
   }
+
+  // حركة مخزون عامة (IN/OUT/RETURN/DAMAGED/ADJUSTMENT/TRANSFER) — mds/04 §3
+  async createMovement(variantId: number, type: any, quantity: number, note: string, userId: number) {
+    const decrease = ['OUT', 'DAMAGED'].includes(type);
+    const increase = ['IN', 'RETURN'].includes(type);
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockVariants(tx, [variantId]);
+      if (decrease) await tx.productVariant.update({ where: { id: variantId }, data: { stockQuantity: { decrement: Math.abs(quantity) } } });
+      else if (increase) await tx.productVariant.update({ where: { id: variantId }, data: { stockQuantity: { increment: Math.abs(quantity) } } });
+      // TRANSFER/ADJUSTMENT: تُسجَّل كحركة (الكمية الموجبة/السالبة كما هي)
+      await tx.stockMovement.create({
+        data: { variantId, type, quantity: decrease ? -Math.abs(quantity) : quantity, note, createdBy: userId },
+      });
+      return { variantId, type, ok: true };
+    });
+  }
+
+  // جلسة جرد: ضبط الكميات الفعلية وتسجيل فروقات ADJUSTMENT (mds/04 §3)
+  async stockCount(counts: { variantId: number; counted: number }[], userId: number) {
+    const results: any[] = [];
+    for (const c of counts) {
+      results.push(await this.adjust(c.variantId, c.counted, 'جرد دوري', userId));
+    }
+    return { counted: results.length, results };
+  }
 }

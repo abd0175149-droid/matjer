@@ -11,6 +11,9 @@ export class ProductQueryDto extends PaginationDto {
   @IsOptional() @IsString() q?: string;
   @IsOptional() @Type(() => Number) @IsNumber() minPrice?: number;
   @IsOptional() @Type(() => Number) @IsNumber() maxPrice?: number;
+  @IsOptional() @IsString() color?: string;
+  @IsOptional() @IsString() size?: string;
+  @IsOptional() @IsString() inStock?: string; // 'true'
 }
 
 export class VariantInput {

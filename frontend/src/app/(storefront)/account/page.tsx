@@ -9,10 +9,12 @@ import { money, ORDER_STATUS_AR } from '@/lib/format';
 export default function AccountPage() {
   const router = useRouter();
   const { user, token, logout } = useAuth();
-  const [tab, setTab] = useState<'orders' | 'wishlist' | 'addresses'>('orders');
+  const [tab, setTab] = useState<'orders' | 'wishlist' | 'addresses' | 'profile'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [wishlist, setWishlist] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
+  const [pf, setPf] = useState({ name: '', phone: '', password: '' });
+  const [pfMsg, setPfMsg] = useState('');
 
   useEffect(() => {
     if (!token) {
@@ -31,10 +33,24 @@ export default function AccountPage() {
 
   if (!token) return null;
 
+  const saveProfile = async () => {
+    setPfMsg('');
+    try {
+      const body: any = {};
+      if (pf.name) body.name = pf.name;
+      if (pf.phone) body.phone = pf.phone;
+      if (pf.password) body.password = pf.password;
+      await apiSend('PATCH', '/account/profile', body, token!);
+      setPfMsg('تم الحفظ ✓');
+      setPf({ ...pf, password: '' });
+    } catch (e: any) { setPfMsg(e.message); }
+  };
+
   const tabs = [
     { k: 'orders', label: 'طلباتي' },
     { k: 'wishlist', label: 'المفضلة' },
     { k: 'addresses', label: 'عناويني' },
+    { k: 'profile', label: 'ملفي' },
   ] as const;
 
   return (
@@ -96,6 +112,16 @@ export default function AccountPage() {
             </div>
           ))}
           {!addresses.length && <p className="text-black/40">لا عناوين محفوظة (تُحفظ عند الطلب)</p>}
+        </div>
+      )}
+
+      {tab === 'profile' && (
+        <div className="card p-4 max-w-md space-y-3">
+          <input className="input" placeholder={user?.name || 'الاسم'} value={pf.name} onChange={(e) => setPf({ ...pf, name: e.target.value })} />
+          <input className="input" placeholder="رقم الهاتف الجديد" value={pf.phone} onChange={(e) => setPf({ ...pf, phone: e.target.value })} />
+          <input className="input" type="password" placeholder="كلمة مرور جديدة (اختياري)" value={pf.password} onChange={(e) => setPf({ ...pf, password: e.target.value })} />
+          {pfMsg && <p className="text-gold-dark text-sm">{pfMsg}</p>}
+          <button className="btn-gold" onClick={saveProfile}>حفظ</button>
         </div>
       )}
     </div>

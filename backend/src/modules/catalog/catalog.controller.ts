@@ -21,6 +21,30 @@ export class CatalogController {
   }
 
   @Public()
+  @Get('products/sections')
+  sections() {
+    return this.catalog.sections();
+  }
+
+  @Public()
+  @Get('products/suggest')
+  suggest(@Query('q') q: string) {
+    return this.catalog.suggest(q || '');
+  }
+
+  @Public()
+  @Get('products/filter-options')
+  filterOptions() {
+    return this.catalog.filterOptions();
+  }
+
+  @Public()
+  @Get('products/:slug/related')
+  related(@Param('slug') slug: string) {
+    return this.catalog.related(slug);
+  }
+
+  @Public()
   @Get('products/:slug')
   one(@Param('slug') slug: string) {
     return this.catalog.getProductBySlug(slug);

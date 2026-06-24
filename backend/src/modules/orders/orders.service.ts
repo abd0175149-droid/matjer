@@ -70,8 +70,8 @@ export class OrdersService {
         };
       });
 
-      // الشحن والضريبة من الإعدادات (errata G4/G5)
-      const { shippingCost, taxAmount } = await this.settings.computeCharges(subtotal);
+      // الشحن والضريبة من الإعدادات (errata G4/G5) + منطقة المدينة
+      const { shippingCost, taxAmount } = await this.settings.computeCharges(subtotal, dto.shipping?.city);
 
       // الكوبون (اختياري)
       let discount = 0;
@@ -204,16 +204,76 @@ export class OrdersService {
     return order;
   }
 
-  adminList(status?: OrderStatus, q?: string) {
+  adminList(f: { status?: OrderStatus; q?: string; from?: string; to?: string; paymentMethod?: PaymentMethod } = {}) {
     const where: Prisma.OrderWhereInput = { deletedAt: null };
-    if (status) where.status = status;
-    if (q) where.OR = [{ orderNumber: { contains: q, mode: 'insensitive' } }];
+    if (f.status) where.status = f.status;
+    if (f.paymentMethod) where.paymentMethod = f.paymentMethod;
+    if (f.q) {
+      where.OR = [
+        { orderNumber: { contains: f.q, mode: 'insensitive' } },
+        { address: { fullName: { contains: f.q, mode: 'insensitive' } } },
+        { address: { phone: { contains: f.q, mode: 'insensitive' } } },
+      ];
+    }
+    if (f.from || f.to) {
+      where.createdAt = {};
+      if (f.from) (where.createdAt as any).gte = new Date(f.from);
+      if (f.to) (where.createdAt as any).lte = new Date(f.to + 'T23:59:59');
+    }
     return this.prisma.order.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: 300,
       include: { items: true, address: true },
     });
+  }
+
+  // تعديل عناصر طلب جديد (NEW) فقط — يعيد الحجز ويحسب الإجمالي (mds/04 §4)
+  async editItems(orderId: number, items: { variantId: number; quantity: number }[]) {
+    if (!items?.length) throw new BadRequestException('لا عناصر');
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM orders WHERE id = ${orderId} FOR UPDATE`);
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
+      if (!order) throw new NotFoundException('الطلب غير موجود');
+      if (order.status !== 'NEW') throw new BadRequestException('يُسمح بتعديل الطلب الجديد فقط');
+
+      // حرّر الحجز القديم ثم احجز الجديد
+      await this.inventory.release(tx, order.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })));
+      await this.inventory.reserve(tx, items);
+
+      const variants = await tx.productVariant.findMany({ where: { id: { in: items.map((i) => i.variantId) } }, include: { product: { select: { name: true } } } });
+      const vMap = new Map(variants.map((v) => [v.id, v]));
+      let subtotal = 0;
+      const itemsData = items.map((it) => {
+        const v = vMap.get(it.variantId)!;
+        const unit = Number(v.price);
+        subtotal += unit * it.quantity;
+        return { orderId, variantId: it.variantId, productName: v.product.name, sku: v.sku, quantity: it.quantity, unitPrice: unit, total: unit * it.quantity };
+      });
+      const { shippingCost, taxAmount } = await this.settings.computeCharges(subtotal);
+      const total = +(subtotal + shippingCost + taxAmount - Number(order.discount)).toFixed(2);
+
+      await tx.orderItem.deleteMany({ where: { orderId } });
+      await tx.orderItem.createMany({ data: itemsData });
+      await tx.order.update({ where: { id: orderId }, data: { subtotal, shippingCost, taxAmount, total } });
+      return { id: orderId, total };
+    });
+  }
+
+  // إلغاء الطلبات الجديدة المنتهية المهلة (تحرير الحجز) — يُستدعى من Cron
+  async autoCancelStale(minutes: number): Promise<number> {
+    const cutoff = new Date(Date.now() - minutes * 60_000);
+    const stale = await this.prisma.order.findMany({ where: { status: 'NEW', createdAt: { lt: cutoff } }, select: { id: true } });
+    let n = 0;
+    for (const o of stale) {
+      try {
+        await this.transition(o.id, { status: 'CANCELLED', note: 'إلغاء تلقائي — انتهت مهلة الحجز' } as UpdateStatusDto);
+        n++;
+      } catch {
+        /* skip */
+      }
+    }
+    return n;
   }
 
   async adminGet(id: number) {

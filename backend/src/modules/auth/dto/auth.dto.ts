@@ -7,6 +7,10 @@ export class LoginDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string; // رمز 2FA إن كان مفعّلاً
 }
 
 export class RegisterDto {

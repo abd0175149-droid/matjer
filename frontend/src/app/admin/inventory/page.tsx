@@ -7,6 +7,7 @@ export default function AdminInventory() {
   const token = () => getToken() ?? '';
   const [low, setLow] = useState<any[]>([]);
   const [form, setForm] = useState({ variantId: '', quantity: '', note: '' });
+  const [mv, setMv] = useState({ variantId: '', type: 'IN', quantity: '', note: '' });
   const [msg, setMsg] = useState('');
 
   const load = () => apiGet('/admin/inventory/low-stock', { headers: { Authorization: `Bearer ${token()}` } }).then(setLow).catch((e) => setMsg(e.message));
@@ -18,6 +19,16 @@ export default function AdminInventory() {
       await apiPost('/admin/inventory/adjust', { variantId: Number(form.variantId), quantity: Number(form.quantity), note: form.note }, token());
       setForm({ variantId: '', quantity: '', note: '' });
       setMsg('تمت التسوية ✓');
+      load();
+    } catch (e: any) { setMsg(e.message); }
+  };
+
+  const movement = async () => {
+    setMsg('');
+    try {
+      await apiPost('/admin/inventory/movement', { variantId: Number(mv.variantId), type: mv.type, quantity: Number(mv.quantity), note: mv.note }, token());
+      setMv({ variantId: '', type: 'IN', quantity: '', note: '' });
+      setMsg('سُجّلت الحركة ✓');
       load();
     } catch (e: any) { setMsg(e.message); }
   };
@@ -34,6 +45,20 @@ export default function AdminInventory() {
           <input className="input" type="number" placeholder="الكمية الجديدة" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
           <input className="input" placeholder="السبب" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           <button className="btn-gold" onClick={adjust}>تسوية</button>
+        </div>
+      </div>
+
+      <div className="card p-4 mb-6">
+        <h2 className="font-bold mb-3">حركة مخزون (إدخال/إخراج/تالف/تحويل)</h2>
+        <div className="grid sm:grid-cols-5 gap-2">
+          <input className="input" placeholder="رقم المتغيّر" value={mv.variantId} onChange={(e) => setMv({ ...mv, variantId: e.target.value })} />
+          <select className="input" value={mv.type} onChange={(e) => setMv({ ...mv, type: e.target.value })}>
+            <option value="IN">إدخال</option><option value="OUT">إخراج</option><option value="RETURN">مرتجع</option>
+            <option value="DAMAGED">تالف</option><option value="TRANSFER">تحويل</option>
+          </select>
+          <input className="input" type="number" placeholder="الكمية" value={mv.quantity} onChange={(e) => setMv({ ...mv, quantity: e.target.value })} />
+          <input className="input" placeholder="ملاحظة" value={mv.note} onChange={(e) => setMv({ ...mv, note: e.target.value })} />
+          <button className="btn-gold" onClick={movement}>تسجيل</button>
         </div>
       </div>
 

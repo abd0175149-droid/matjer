@@ -10,11 +10,15 @@ const NAV = [
   { href: '/admin/orders', label: 'الطلبات' },
   { href: '/admin/inventory', label: 'المخزون' },
   { href: '/admin/procurement', label: 'المشتريات' },
+  { href: '/admin/customers', label: 'العملاء' },
   { href: '/admin/reviews', label: 'المراجعات' },
   { href: '/admin/coupons', label: 'الكوبونات' },
   { href: '/admin/reports', label: 'التقارير' },
+  { href: '/admin/banners', label: 'البانرات' },
+  { href: '/admin/pages', label: 'الصفحات' },
   { href: '/admin/users', label: 'المستخدمون' },
   { href: '/admin/settings', label: 'الإعدادات' },
+  { href: '/admin/security', label: 'الأمان (2FA)' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

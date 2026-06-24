@@ -28,6 +28,12 @@ export class CatalogService {
       if (q.minPrice != null) (where.basePrice as any).gte = q.minPrice;
       if (q.maxPrice != null) (where.basePrice as any).lte = q.maxPrice;
     }
+    // فلاتر المتغيرات: اللون/المقاس/التوفّر
+    const variantWhere: Prisma.ProductVariantWhereInput = { isActive: true };
+    if (q.color) variantWhere.color = { equals: q.color, mode: 'insensitive' };
+    if (q.size) variantWhere.size = { equals: q.size, mode: 'insensitive' };
+    if (q.inStock === 'true') variantWhere.stockQuantity = { gt: 0 };
+    if (q.color || q.size || q.inStock === 'true') where.variants = { some: variantWhere };
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -71,6 +77,66 @@ export class CatalogService {
       include: { images: { take: 1, orderBy: { sortOrder: 'asc' } }, category: { select: { name: true, slug: true } }, variants: { where: { isActive: true } } },
     });
     return items.map((p) => this.toCard(p));
+  }
+
+  // اقتراحات بحث فورية (autocomplete)
+  async suggest(q: string) {
+    if (!q || q.length < 2) return [];
+    const items = await this.prisma.product.findMany({
+      where: {
+        isActive: true,
+        deletedAt: null,
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { variants: { some: { sku: { contains: q, mode: 'insensitive' } } } },
+        ],
+      },
+      take: 6,
+      select: { name: true, slug: true, images: { take: 1, orderBy: { sortOrder: 'asc' } } },
+    });
+    return items.map((p) => ({ name: p.name, slug: p.slug, image: p.images[0]?.imageUrl ?? null }));
+  }
+
+  // أقسام الصفحة الرئيسية
+  async sections() {
+    const base = { isActive: true, deletedAt: null } as Prisma.ProductWhereInput;
+    const inc = {
+      images: { take: 1, orderBy: { sortOrder: 'asc' as const } },
+      category: { select: { name: true, slug: true } },
+      variants: { where: { isActive: true } },
+    };
+    const [featured, bestSelling, newest, onSale] = await Promise.all([
+      this.prisma.product.findMany({ where: { ...base, isFeatured: true }, take: 8, orderBy: { createdAt: 'desc' }, include: inc }),
+      this.prisma.product.findMany({ where: base, take: 8, orderBy: { salesCount: 'desc' }, include: inc }),
+      this.prisma.product.findMany({ where: base, take: 8, orderBy: { createdAt: 'desc' }, include: inc }),
+      this.prisma.product.findMany({ where: { ...base, discountPrice: { not: null } }, take: 8, orderBy: { createdAt: 'desc' }, include: inc }),
+    ]);
+    const m = (arr: any[]) => arr.map((p) => this.toCard(p));
+    return { featured: m(featured), bestSelling: m(bestSelling), newest: m(newest), onSale: m(onSale) };
+  }
+
+  // منتجات مشابهة (نفس التصنيف)
+  async related(slug: string) {
+    const p = await this.prisma.product.findFirst({ where: { slug }, select: { id: true, categoryId: true } });
+    if (!p) return [];
+    const items = await this.prisma.product.findMany({
+      where: { categoryId: p.categoryId, id: { not: p.id }, isActive: true, deletedAt: null },
+      take: 4,
+      orderBy: { salesCount: 'desc' },
+      include: { images: { take: 1, orderBy: { sortOrder: 'asc' } }, category: { select: { name: true, slug: true } }, variants: { where: { isActive: true } } },
+    });
+    return items.map((x) => this.toCard(x));
+  }
+
+  // قيم الفلاتر المتاحة (ألوان/مقاسات)
+  async filterOptions() {
+    const variants = await this.prisma.productVariant.findMany({
+      where: { isActive: true, product: { isActive: true, deletedAt: null } },
+      select: { color: true, size: true },
+    });
+    const colors = [...new Set(variants.map((v) => v.color).filter(Boolean))];
+    const sizes = [...new Set(variants.map((v) => v.size).filter(Boolean))];
+    return { colors, sizes };
   }
 
   async getProductBySlug(slug: string) {

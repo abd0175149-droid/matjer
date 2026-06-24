@@ -31,4 +31,16 @@ export class InventoryController {
   adjust(@Body() dto: AdjustDto, @CurrentUser() user: AuthUser) {
     return this.inventory.adjust(dto.variantId, dto.quantity, dto.note ?? '', user.id);
   }
+
+  @Post('movement')
+  @RequirePermissions('inventory.write')
+  movement(@Body() body: { variantId: number; type: string; quantity: number; note?: string }, @CurrentUser() user: AuthUser) {
+    return this.inventory.createMovement(body.variantId, body.type, body.quantity, body.note ?? '', user.id);
+  }
+
+  @Post('count')
+  @RequirePermissions('inventory.count')
+  count(@Body() body: { counts: { variantId: number; counted: number }[] }, @CurrentUser() user: AuthUser) {
+    return this.inventory.stockCount(body.counts || [], user.id);
+  }
 }
