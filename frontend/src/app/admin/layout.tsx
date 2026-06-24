@@ -19,6 +19,7 @@ const NAV = [
   { href: '/admin/users', label: 'المستخدمون' },
   { href: '/admin/settings', label: 'الإعدادات' },
   { href: '/admin/appearance', label: 'المظهر والتخصيص' },
+  { href: '/admin/design', label: 'نظام التصميم' },
   { href: '/admin/security', label: 'الأمان (2FA)' },
 ];
 

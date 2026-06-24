@@ -8,11 +8,11 @@ export default function CartPage() {
 
   if (!items.length) {
     return (
-      <div className="max-w-3xl mx-auto px-4 my-16 text-center">
-        <h1 className="text-2xl font-bold mb-3">سلّتك فارغة</h1>
-        <Link href="/" className="btn-gold inline-block">
-          تصفّح المنتجات
-        </Link>
+      <div className="max-w-3xl mx-auto px-4 my-20 text-center">
+        <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-gold-soft grid place-items-center text-4xl">🛍️</div>
+        <h1 className="text-2xl font-extrabold mb-2">سلّتك فارغة</h1>
+        <p className="text-muted-foreground mb-6">ابدأ التسوّق واكتشف تشكيلتنا من الذهب التقليدي.</p>
+        <Link href="/" className="btn-gold inline-block">تصفّح المنتجات</Link>
       </div>
     );
   }

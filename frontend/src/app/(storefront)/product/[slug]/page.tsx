@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { apiGet } from '@/lib/api';
 import AddToCart from '@/components/AddToCart';
 import WishlistButton from '@/components/WishlistButton';
-import ProductReviews from '@/components/ProductReviews';
+import ProductTabs from '@/components/ProductTabs';
 import ProductGallery from '@/components/ProductGallery';
 import ShareButtons from '@/components/ShareButtons';
 import ProductCard, { ProductCardData } from '@/components/ProductCard';
@@ -57,22 +57,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
               <span className="text-black/40 line-through">{money(product.basePrice)}</span>
             )}
           </div>
-          {product.description && <p className="text-black/70 mb-6 leading-relaxed">{product.description}</p>}
+          {product.description && <p className="text-foreground/70 mb-6 leading-relaxed line-clamp-3">{product.description}</p>}
           <AddToCart productName={product.name} slug={product.slug} image={images[0] ?? null} variants={variants} />
           <div className="mt-3"><WishlistButton productId={product.id} /></div>
           <ShareButtons title={product.name} />
-          {product.attributes && (
-            <div className="mt-6 text-sm">
-              <h3 className="font-bold mb-2">المواصفات</h3>
-              <ul className="space-y-1 text-black/70">
-                {Object.entries(product.attributes).map(([k, v]) => <li key={k}>• {k}: {String(v)}</li>)}
-              </ul>
-            </div>
-          )}
         </div>
       </div>
 
-      <ProductReviews productId={product.id} />
+      <ProductTabs description={product.description} attributes={product.attributes} productId={product.id} />
 
       {related.length > 0 && (
         <section className="mt-12">

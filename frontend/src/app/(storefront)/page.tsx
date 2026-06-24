@@ -3,6 +3,7 @@ import { ShieldCheck, Truck, RotateCcw, BadgeCheck } from 'lucide-react';
 import { apiGet } from '@/lib/api';
 import ProductCard, { ProductCardData } from '@/components/ProductCard';
 import Reveal from '@/components/ui/Reveal';
+import HeroCinematic from '@/components/HeroCinematic';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,16 +44,7 @@ export default async function HomePage() {
           <a href={banners[0].link || '#'}><img src={banners[0].imageUrl} alt={banners[0].title || ''} className="w-full max-h-[420px] object-cover" /></a>
         </section>
       ) : (
-        <section className="my-6 rounded-3xl overflow-hidden relative card-luxe">
-          <div className="relative px-8 py-16 md:px-16 md:py-24 text-white" style={{ background: 'linear-gradient(135deg, var(--gold-deep), var(--gold))' }}>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, white 0, transparent 40%)' }} />
-            <div className="relative max-w-xl">
-              <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">إكسسوارات الذهب التقليدي</h1>
-              <p className="text-white/90 text-lg mb-8">أطقم وخواتم وأساور وقلادات — ذهب روسي وصيني بأسعار ثابتة وجودة مضمونة.</p>
-              <Link href="/category/sets" className="bg-white text-gold-deep font-extrabold rounded-xl px-8 py-3.5 inline-block hover:scale-105 transition-transform">تسوّق الآن</Link>
-            </div>
-          </div>
-        </section>
+        <HeroCinematic />
       )}
 
       {/* Bento categories */}

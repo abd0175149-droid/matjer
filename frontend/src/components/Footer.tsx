@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { apiGet } from '@/lib/api';
+import PaletteSwitcher from '@/components/PaletteSwitcher';
 
 export default async function Footer() {
   let pages: { slug: string; title: string }[] = [];
@@ -26,7 +27,10 @@ export default async function Footer() {
           <ul className="space-y-1"><li>✓ دفع آمن</li><li>✓ الدفع عند الاستلام</li><li>✓ إرجاع سهل</li><li>✓ ضمان الجودة</li></ul>
         </div>
       </div>
-      <div className="border-t border-white/10 py-4 text-center text-xs text-white/50">© متجر الذهب — جميع الحقوق محفوظة.</div>
+      <div className="border-t border-white/10 py-4 px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/50 max-w-6xl mx-auto">
+        <span>© متجر الذهب — جميع الحقوق محفوظة.</span>
+        <PaletteSwitcher />
+      </div>
     </footer>
   );
 }
