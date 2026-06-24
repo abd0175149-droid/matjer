@@ -1,4 +1,6 @@
+'use client';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { money, GOLD_TYPE_AR } from '@/lib/format';
 
 export interface ProductCardData {
@@ -15,29 +17,36 @@ export interface ProductCardData {
 export default function ProductCard({ p }: { p: ProductCardData }) {
   const hasDiscount = p.discountPrice != null && Number(p.discountPrice) < Number(p.basePrice);
   return (
-    <Link href={`/product/${p.slug}`} className="card group block">
-      <div className="aspect-square bg-black/5 overflow-hidden relative">
-        {p.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-        ) : (
-          <div className="w-full h-full grid place-items-center text-black/30">لا صورة</div>
-        )}
-        {hasDiscount && (
-          <span className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">خصم</span>
-        )}
-        {p.inStock === false && (
-          <span className="absolute inset-0 bg-white/70 grid place-items-center font-bold text-ink">نفد المخزون</span>
-        )}
-      </div>
-      <div className="p-3">
-        <div className="text-xs text-gold-dark mb-1">{GOLD_TYPE_AR[p.goldType] ?? ''}</div>
-        <h3 className="font-bold text-sm line-clamp-2 min-h-[2.5rem]">{p.name}</h3>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-gold-dark font-extrabold">{money(p.price)}</span>
-          {hasDiscount && <span className="text-black/40 line-through text-xs">{money(p.basePrice)}</span>}
+    <motion.div whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 24 }}>
+      <Link href={`/product/${p.slug}`} className="card group block h-full hover:card-luxe transition-shadow">
+        <div className="aspect-square bg-muted overflow-hidden relative">
+          {p.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.image} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          ) : (
+            <div className="w-full h-full grid place-items-center text-muted-foreground">لا صورة</div>
+          )}
+          {hasDiscount && (
+            <span className="absolute top-2 end-2 bg-danger text-white text-[11px] font-bold px-2 py-1 rounded-full">خصم</span>
+          )}
+          {p.inStock === false && (
+            <span className="absolute inset-0 glass grid place-items-center font-bold">نفد المخزون</span>
+          )}
+          {/* شريط زجاجي للسعر يظهر عند hover */}
+          <div className="absolute inset-x-0 bottom-0 glass px-3 py-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex items-center justify-between">
+            <span className="text-gold-deep font-extrabold text-sm">{money(p.price)}</span>
+            {hasDiscount && <span className="text-muted-foreground line-through text-xs">{money(p.basePrice)}</span>}
+          </div>
         </div>
-      </div>
-    </Link>
+        <div className="p-3">
+          <div className="text-[11px] text-gold-deep mb-1">{GOLD_TYPE_AR[p.goldType] ?? ''}</div>
+          <h3 className="font-bold text-sm line-clamp-2 min-h-[2.5rem]">{p.name}</h3>
+          <div className="mt-2 flex items-center gap-2 sm:group-hover:opacity-0 transition-opacity">
+            <span className="text-gold-deep font-extrabold">{money(p.price)}</span>
+            {hasDiscount && <span className="text-muted-foreground line-through text-xs">{money(p.basePrice)}</span>}
+          </div>
+        </div>
+      </Link>
+    </motion.div>
   );
 }

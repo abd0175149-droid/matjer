@@ -1,32 +1,82 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --gold: #c8a24b;
+/* ═══════════ Design Tokens (mds/13) — OKLCH, themable ═══════════ */
+@layer base {
+  :root {
+    --background: oklch(0.99 0.005 95);
+    --foreground: oklch(0.22 0.02 60);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.22 0.02 60);
+    --muted: oklch(0.96 0.008 90);
+    --muted-foreground: oklch(0.52 0.02 70);
+    --border: oklch(0.90 0.012 85);
+    --gold: oklch(0.74 0.115 78);
+    --gold-deep: color-mix(in oklab, var(--gold), black 16%);
+    --gold-soft: color-mix(in oklab, var(--gold), white 74%);
+    --ink: oklch(0.20 0.012 60);
+    --primary: var(--gold);
+    --primary-foreground: oklch(1 0 0);
+    --ring: var(--gold);
+    --success: oklch(0.62 0.13 150);
+    --danger: oklch(0.58 0.18 25);
+    --radius: 1rem;
+    --shadow-luxe: 0 10px 40px -16px oklch(0.6 0.12 75 / 0.30);
+    --ease-luxe: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .dark {
+    --background: oklch(0.19 0.012 60);
+    --foreground: oklch(0.95 0.01 90);
+    --card: oklch(0.23 0.016 60);
+    --card-foreground: oklch(0.95 0.01 90);
+    --muted: oklch(0.27 0.015 60);
+    --muted-foreground: oklch(0.70 0.02 80);
+    --border: oklch(0.32 0.02 65);
+    --gold-soft: color-mix(in oklab, var(--gold), black 55%);
+    --ink: oklch(0.95 0.01 90);
+  }
+  * { border-color: var(--border); }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "ss01";
+  }
+  ::selection { background: var(--gold-soft); }
 }
 
-html,
-body {
-  padding: 0;
-  margin: 0;
+@layer components {
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 font-bold rounded-xl px-5 py-2.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    background: var(--gold); color: var(--primary-foreground);
+    box-shadow: 0 4px 16px -6px var(--gold);
+  }
+  .btn-gold:hover { background: var(--gold-deep); transform: translateY(-1px); }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 font-bold rounded-xl px-5 py-2.5 transition-all duration-200 border;
+    border-color: var(--gold); color: var(--gold-deep); background: transparent;
+  }
+  .btn-outline:hover { background: var(--gold-soft); }
+  .card {
+    background: var(--card); color: var(--card-foreground);
+    @apply rounded-2xl border overflow-hidden;
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.04);
+  }
+  .card-luxe { box-shadow: var(--shadow-luxe); }
+  .input {
+    background: var(--card); color: var(--foreground);
+    @apply w-full border rounded-xl px-3.5 py-2.5 transition focus:outline-none;
+  }
+  .input:focus { box-shadow: 0 0 0 3px var(--gold-soft); border-color: var(--gold); }
+  .glass {
+    background: oklch(1 0 0 / 0.65); backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .dark .glass { background: oklch(0.23 0.016 60 / 0.6); }
+  .container-x { @apply max-w-6xl mx-auto px-4; }
 }
 
-body {
-  background: #faf8f4;
-  color: #1a1a1a;
-}
-
-.btn-gold {
-  @apply bg-gold text-white font-bold rounded-lg px-5 py-2.5 transition hover:bg-gold-dark disabled:opacity-50 disabled:cursor-not-allowed;
-}
-.btn-outline {
-  @apply border border-gold text-gold-dark font-bold rounded-lg px-5 py-2.5 transition hover:bg-gold/10;
-}
-.card {
-  @apply bg-white rounded-xl shadow-sm border border-black/5 overflow-hidden;
-}
-.input {
-  @apply w-full border border-black/15 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold/40;
+/* احترام تفضيل تقليل الحركة */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }

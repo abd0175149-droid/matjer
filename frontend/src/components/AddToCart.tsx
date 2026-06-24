@@ -21,6 +21,7 @@ interface Props {
 
 export default function AddToCart({ productName, slug, image, variants }: Props) {
   const add = useCart((s) => s.add);
+  const openCart = useCart((s) => s.openCart);
   const router = useRouter();
   const [variantId, setVariantId] = useState<number>(variants[0]?.id);
   const [qty, setQty] = useState(1);
@@ -42,6 +43,7 @@ export default function AddToCart({ productName, slug, image, variants }: Props)
       size: variant.size,
     });
     setDone(true);
+    openCart();
     setTimeout(() => setDone(false), 1800);
   };
 

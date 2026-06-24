@@ -14,11 +14,12 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   contact_address: '',
   social_whatsapp: '',
   shipping_zones: '', // JSON: [{"city":"عمّان","fee":2}]
+  primary_color: '', // لون العلامة (تخصيص المظهر) — يُحقن كـ --gold
 };
 
 const PUBLIC_KEYS = [
   'store_name', 'currency', 'currency_symbol', 'tax_rate', 'shipping_flat', 'free_shipping_threshold',
-  'store_logo', 'contact_phone', 'contact_email', 'contact_address', 'social_whatsapp',
+  'store_logo', 'contact_phone', 'contact_email', 'contact_address', 'social_whatsapp', 'primary_color',
 ];
 
 @Injectable()

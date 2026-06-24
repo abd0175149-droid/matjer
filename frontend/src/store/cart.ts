@@ -15,6 +15,9 @@ export interface CartItem {
 
 interface CartState {
   items: CartItem[];
+  isOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
   add: (item: CartItem) => void;
   remove: (variantId: number) => void;
   setQty: (variantId: number, qty: number) => void;
@@ -27,6 +30,9 @@ export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      isOpen: false,
+      openCart: () => set({ isOpen: true }),
+      closeCart: () => set({ isOpen: false }),
       add: (item) =>
         set((s) => {
           const existing = s.items.find((i) => i.variantId === item.variantId);

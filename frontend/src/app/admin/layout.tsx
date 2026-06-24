@@ -18,6 +18,7 @@ const NAV = [
   { href: '/admin/pages', label: 'الصفحات' },
   { href: '/admin/users', label: 'المستخدمون' },
   { href: '/admin/settings', label: 'الإعدادات' },
+  { href: '/admin/appearance', label: 'المظهر والتخصيص' },
   { href: '/admin/security', label: 'الأمان (2FA)' },
 ];
 

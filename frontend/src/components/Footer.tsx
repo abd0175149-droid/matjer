@@ -6,10 +6,10 @@ export default async function Footer() {
   try { pages = await apiGet('/pages'); } catch { /* */ }
 
   return (
-    <footer className="bg-ink text-white/80 mt-16">
-      <div className="max-w-6xl mx-auto px-4 py-10 grid gap-8 md:grid-cols-3 text-sm">
+    <footer className="text-white/75 mt-16" style={{ background: 'oklch(0.17 0.012 60)' }}>
+      <div className="max-w-6xl mx-auto px-4 py-12 grid gap-8 md:grid-cols-3 text-sm">
         <div>
-          <h3 className="text-gold-light font-bold text-lg mb-2">متجر الذهب</h3>
+          <h3 className="font-extrabold text-xl mb-2" style={{ color: 'var(--gold)' }}>متجر الذهب</h3>
           <p>إكسسوارات ذهب تقليدي (روسي وصيني) — أطقم، خواتم، أساور، قلادات بأسعار ثابتة.</p>
         </div>
         <div>
