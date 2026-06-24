@@ -407,3 +407,45 @@ docker compose exec -T database pg_dump -U matjer_user matjer_db \
 | النفق يعتمد على cloudflared + Cloudflare | تعطّل الخدمة = انقطاع الوصول العام | `Restart=on-failure` مفعّل؛ مراقبة حالة الخدمة |
 | sudo يتطلّب كلمة مرور | عمليات النظام (تعديل النفق) تحتاج تدخّل يدوي | Docker يعمل بدون sudo؛ النشر نفسه لا يحتاج sudo |
 | منافذ مشتركة مع مشاريع أخرى | تعارض محتمل | التزام المنافذ المخصّصة (القسم 5) والتحقق قبل النشر |
+
+---
+
+## 11. النشر الفعلي لـ matjer — حالة وتصحيحات (2026-06-24)
+
+> المشروع **منشور ويعمل** على **https://sooq.grade.sbs**. هذا القسم يوثّق الواقع الفعلي وتصحيحاً مهمّاً لطريقة إدارة النفق.
+
+### 11.1 ⚠️ تصحيح جوهري: النفق **مُدار عن بُعد** (Dashboard/API) وليس عبر `config.yml`
+خلافاً لِما ورد في القسم 4، تبيّن عملياً أنّ ingress النفق `cloudpanel-tunnel` **مُدار من لوحة Cloudflare (remotely-managed)**:
+- ملف `/etc/cloudflared/config.yml` المحلي **يُتجاهَل** — cloudflared يجلب الإعداد من Cloudflare (لاحظ حقول `"id"` في الإعداد المُحمّل، ووجود مضيفات live غير موجودة في الملف المحلي مثل `scout/nusuk/ssh.grade.sbs`).
+- **النتيجة:** تعديل `config.yml` + `systemctl restart cloudflared` **لا يضيف مضيفاً**. الإضافة تتم عبر **Cloudflare API** أو **لوحة Zero Trust**.
+
+### 11.2 الطريقة الصحيحة لإضافة مضيف (hostname) للنفق
+**أ. عبر API (المتّبع لـ matjer):**
+```
+# 1) سجل DNS (يعمل بدون sudo، يستخدم ~/.cloudflared/cert.pem)
+cloudflared tunnel route dns cloudpanel-tunnel sooq.grade.sbs
+
+# 2) أضف القاعدة لإعداد النفق البعيد (توكن: Account · Cloudflare Tunnel · Edit)
+#    GET ثم PUT على configurations مع إبقاء كل القواعد + إدراج الجديدة قبل http_status:404
+GET/PUT https://api.cloudflare.com/client/v4/accounts/053ea85894ec4be0cd2d5c44e2b9c961/cfd_tunnel/b8f315ec-.../configurations
+```
+**ب. عبر اللوحة:** Zero Trust → Networks → Tunnels → `cloudpanel-tunnel` → Public Hostnames → Add.
+
+> account-id: `053ea85894ec4be0cd2d5c44e2b9c961` · tunnel-id: `b8f315ec-a311-4b7a-8891-7b9e37a43f73`.
+
+### 11.3 قاعدة واحدة بدل path-split (تبسيط)
+الواجهة (Next.js) تُوكّل `/api` و`/uploads` للباكند داخلياً عبر `rewrites` في `next.config.mjs`. لذا يحتاج النفق **قاعدة واحدة فقط**:
+```
+sooq.grade.sbs  →  http://localhost:3020   (frontend؛ وهي توكّل /api للباكند)
+```
+
+### 11.4 ملخّص بيئة matjer الحيّة
+| البند | القيمة |
+|-------|--------|
+| الدومين | https://sooq.grade.sbs |
+| المسار | `/home/sysadmin/matjer` (git: origin/main) |
+| الحاويات | matjer-{frontend,backend,database,redis} (كلها 127.0.0.1) |
+| المنافذ | frontend 3020 · backend 4002 · postgres 5436 · redis 6383 |
+| لوحة الإدارة | https://sooq.grade.sbs/admin (الحساب الأولي: `admin@sooq.grade.sbs`) |
+| الأسرار | `/home/sysadmin/matjer/.env` (mode 600، خارج Git) |
+| التحديث | `cd /home/sysadmin/matjer && ./deploy.sh` (git pull → build → up → seed) |
