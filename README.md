@@ -1,32 +1,57 @@
 # متجر — إكسسوارات الذهب التقليدي 🏷️
 
-متجر إلكتروني متخصص في بيع إكسسوارات الذهب التقليدي (الروسي والصيني) — أطقم، خواتم، أساور، قلادات — مع **نظام ERP متكامل** لإدارة المخزون والطلبات والمشتريات والمحاسبة والعملاء في منظومة واحدة متزامنة.
+متجر إلكتروني متخصص في بيع إكسسوارات الذهب التقليدي (الروسي والصيني) — أطقم، خواتم، أساور، قلادات — مع **نظام ERP** لإدارة المنتجات والمخزون والطلبات في منظومة واحدة متزامنة.
 
-## التوثيق
-
-كل تفاصيل المشروع موثّقة في مجلد [`mds/`](mds/):
-
-| # | الملف | المحتوى |
-|---|-------|---------|
-| 00 | [نظرة عامة وفهرس](mds/00-README.md) | فهرس المشروع |
-| 01 | [نظرة عامة](mds/01-project-overview.md) | الفكرة، الأهداف، النطاق |
-| 02 | [البنية التقنية](mds/02-technical-architecture.md) | المعمارية والتقنيات |
-| 03 | [ميزات المتجر](mds/03-storefront-features.md) | واجهة العميل |
-| 04 | [نظام ERP](mds/04-erp-system.md) | المخزون، الطلبات، المحاسبة |
-| 05 | [قاعدة البيانات](mds/05-database-design.md) | الجداول والعلاقات |
-| 06 | [دورة حياة الطلب](mds/06-order-lifecycle.md) | التدفق والترابط مع المخزون |
-| 07 | [الأمان والأداء](mds/07-security-performance.md) | الأمان وSEO |
-| 08 | [خطة التنفيذ](mds/08-implementation-plan.md) | المراحل وMVP |
-| 09 | [التكاملات](mds/09-integrations.md) | الدفع، الشحن، الإشعارات |
-| 10 | [الأدوار والصلاحيات](mds/10-roles-permissions.md) | المستخدمون والصلاحيات |
-| 11 | [السيرفر والنشر](mds/11-server-deployment.md) | بيئة السيرفر وآلية الرفع |
-| 12 | [خطة البناء](mds/12-build-plan.md) | الخطة التنفيذية المتكاملة (blueprint مرحلي) |
+> **الحالة:** أساس متكامل قابل للتشغيل (MVP foundation) — متجر + باكند + لوحة إدارة، يعمل end-to-end.
 
 ## الستاك التقني
 
-- **الواجهة:** Next.js (React) + Tailwind CSS — متجر + لوحة ERP
-- **الباكند:** Node.js + NestJS — REST API + JWT
-- **قاعدة البيانات:** PostgreSQL + Redis
-- **النشر:** Docker Compose عبر Cloudflare Tunnel (بلا IP عام)
+- **الواجهة:** Next.js 14 (App Router, TypeScript, Tailwind, RTL عربي) — متجر + لوحة `/admin`
+- **الباكند:** NestJS (TypeScript) — REST `/api` + JWT + RBAC + Prisma
+- **قاعدة البيانات:** PostgreSQL 16 + Redis
+- **النشر:** Docker Compose عبر Cloudflare Tunnel — `https://sooq.grade.sbs`
 
-> الحالة الحالية: **مرحلة التوثيق والتخطيط.** كود التطبيق قيد التجهيز.
+## بنية المشروع
+
+```
+matjer/
+├── backend/          # NestJS API + Prisma (auth, catalog, inventory, orders, cart)
+├── frontend/         # Next.js storefront + admin
+├── docker-compose.yml
+├── deploy.sh
+├── .env.example
+└── mds/              # التوثيق الكامل (00–12)
+```
+
+## التشغيل محلياً (تطوير)
+
+```bash
+# باكند
+cd backend && npm install && npx prisma generate
+# شغّل Postgres+Redis (عبر docker أو محلياً) واضبط DATABASE_URL/REDIS_URL
+npx prisma db push && npm run db:seed && npm run start:dev
+
+# واجهة (نافذة أخرى)
+cd frontend && npm install && npm run dev   # http://localhost:3020
+```
+
+## النشر على السيرفر
+
+```bash
+cp .env.example .env   # اضبط القيم
+docker compose build --pull && docker compose up -d
+docker compose exec backend npm run db:seed
+# ثم ربط Cloudflare Tunnel (انظر mds/11 + mds/12)
+```
+
+أو عبر السكربت: `./deploy.sh`
+
+## الوحدات الجاهزة (MVP foundation)
+
+- **المتجر:** رئيسية، تصنيفات + فلترة/فرز، صفحة منتج، سلة، دفع (COD)، تتبّع طلب.
+- **الإدارة:** دخول، لوحة معلومات، إدارة منتجات، إدارة طلبات (تغيير الحالة).
+- **المحرّك:** حجز مخزون + قفل صفوف (منع البيع المزدوج)، آلة حالات الطلب، RBAC، seed لأدوار/صلاحيات/منتجات.
+
+## التوثيق
+
+كل التفاصيل في [`mds/`](mds/): النظرة العامة (01)، البنية (02)، الميزات (03)، ERP (04)، قاعدة البيانات (05)، دورة الطلب (06)، الأمان (07)، الخطة (08)، التكاملات (09)، الصلاحيات (10)، **السيرفر والنشر (11)**، **خطة البناء التنفيذية (12)**.

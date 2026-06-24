@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #c8a24b;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: #faf8f4;
+  color: #1a1a1a;
+}
+
+.btn-gold {
+  @apply bg-gold text-white font-bold rounded-lg px-5 py-2.5 transition hover:bg-gold-dark disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-outline {
+  @apply border border-gold text-gold-dark font-bold rounded-lg px-5 py-2.5 transition hover:bg-gold/10;
+}
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-black/5 overflow-hidden;
+}
+.input {
+  @apply w-full border border-black/15 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold/40;
+}

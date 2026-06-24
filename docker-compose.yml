@@ -1,0 +1,67 @@
+# matjer — إنتاج. كل المنافذ على 127.0.0.1 فقط (يصلها Cloudflare Tunnel) — errata C-3.
+services:
+  database:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: matjer_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "127.0.0.1:${DB_PORT}:5432" # 🔒 محلي فقط
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matjer_user -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "127.0.0.1:${REDIS_PORT}:6379" # 🔒 محلي فقط
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - PORT=${BACKEND_PORT}
+      # داخل شبكة Docker: اسم الخدمة + المنفذ الداخلي (errata C-3)
+      - DATABASE_URL=postgresql://matjer_user:${DB_PASSWORD}@database:5432/${DB_NAME}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}" # 🔒 يصله cloudflared لمسار /api
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - BACKEND_INTERNAL_URL=http://backend:${BACKEND_PORT}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT}:3020" # 🔒 يصله cloudflared (الجذر)
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  redis_data:
+  uploads_data:
