@@ -103,6 +103,9 @@ model User {
   role      Role      @relation(fields: [roleId], references: [id])
   orders    Order[]
   addresses Address[]
+  wishlists Wishlist[]
+  reviews   Review[]
+  auditLogs AuditLog[]
 
   @@index([roleId])
   @@map("users")
@@ -147,6 +150,8 @@ model Product {
   category   Category         @relation(fields: [categoryId], references: [id])
   variants   ProductVariant[]
   images     ProductImage[]
+  reviews    Review[]
+  wishlists  Wishlist[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -168,6 +173,7 @@ model ProductVariant {
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
   orderItems     OrderItem[]
+  purchaseItems  PurchaseOrderItem[]
 
   @@index([productId])
   @@map("product_variants")
@@ -303,4 +309,106 @@ model Coupon {
   orders Order[]
 
   @@map("coupons")
+}
+
+// ─────────────── ما بعد الأساس (wishlist/reviews/procurement/audit/settings) ───────────────
+model Wishlist {
+  id         Int      @id @default(autoincrement())
+  customerId Int      @map("customer_id")
+  productId  Int      @map("product_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer User    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+  @@map("wishlists")
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  productId  Int      @map("product_id")
+  customerId Int      @map("customer_id")
+  rating     Int // 1..5
+  comment    String?
+  isApproved Boolean  @default(false) @map("is_approved")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer User    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("reviews")
+}
+
+enum PurchaseStatus {
+  PENDING
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+model Supplier {
+  id        Int             @id @default(autoincrement())
+  name      String
+  contact   String?
+  notes     String?
+  createdAt DateTime        @default(now()) @map("created_at")
+  orders    PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id         Int                 @id @default(autoincrement())
+  supplierId Int                 @map("supplier_id")
+  status     PurchaseStatus      @default(PENDING)
+  totalCost  Decimal             @default(0) @map("total_cost") @db.Decimal(12, 2)
+  notes      String?
+  createdAt  DateTime            @default(now()) @map("created_at")
+  receivedAt DateTime?           @map("received_at")
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              Int     @id @default(autoincrement())
+  purchaseOrderId Int     @map("purchase_order_id")
+  variantId       Int     @map("variant_id")
+  quantity        Int
+  unitCost        Decimal @map("unit_cost") @db.Decimal(12, 2)
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String // مثل order.status, product.create
+  entity    String?
+  entityId  String?  @map("entity_id")
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_log")
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }

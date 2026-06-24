@@ -9,6 +9,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
   const [form, setForm] = useState({ fullName: '', phone: '', city: '', area: '', street: '', details: '', notes: '' });
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'CARD'>('COD');
+  const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState<{ orderNumber: string; uuid: string } | null>(null);
@@ -28,6 +29,7 @@ export default function CheckoutPage() {
         paymentMethod,
         shipping: form,
         notes: form.notes,
+        couponCode: couponCode.trim() || undefined,
       });
       clear();
       setDone({ orderNumber: res.orderNumber, uuid: res.uuid });
@@ -93,6 +95,7 @@ export default function CheckoutPage() {
 
       <div className="card p-4 h-fit">
         <h3 className="font-bold mb-3">ملخّص الطلب</h3>
+        <input className="input mb-3 text-sm" placeholder="كوبون خصم (اختياري)" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
         <ul className="space-y-2 text-sm mb-3">
           {items.map((i) => (
             <li key={i.variantId} className="flex justify-between">

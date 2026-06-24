@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { apiGet } from '@/lib/api';
 import AddToCart from '@/components/AddToCart';
+import WishlistButton from '@/components/WishlistButton';
+import ProductReviews from '@/components/ProductReviews';
 import { money, GOLD_TYPE_AR } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +56,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
           <AddToCart productName={product.name} slug={product.slug} image={image} variants={variants} />
 
+          <div className="mt-3">
+            <WishlistButton productId={product.id} />
+          </div>
+
           {product.attributes && (
             <div className="mt-6 text-sm">
               <h3 className="font-bold mb-2">المواصفات</h3>
@@ -66,6 +72,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
           )}
         </div>
       </div>
+
+      <ProductReviews productId={product.id} />
     </div>
   );
 }

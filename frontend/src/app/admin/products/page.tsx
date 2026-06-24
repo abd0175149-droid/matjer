@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/lib/api';
 import { getToken } from '@/lib/admin-auth';
@@ -87,6 +88,7 @@ export default function AdminProducts() {
               <th className="p-3">السعر</th>
               <th className="p-3">المخزون</th>
               <th className="p-3">الحالة</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -99,6 +101,7 @@ export default function AdminProducts() {
                   <td className="p-3">{money(p.discountPrice ?? p.basePrice)}</td>
                   <td className="p-3">{stock}</td>
                   <td className="p-3">{p.isActive ? '✅ منشور' : '⛔ مخفي'}</td>
+                  <td className="p-3"><Link href={`/admin/products/${p.id}`} className="text-gold-dark font-bold">تعديل</Link></td>
                 </tr>
               );
             })}

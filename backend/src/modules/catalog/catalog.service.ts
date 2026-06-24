@@ -148,6 +148,72 @@ export class CatalogService {
     return this.prisma.category.create({ data: { ...dto } });
   }
 
+  adminListCategories() {
+    return this.prisma.category.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: { _count: { select: { products: true } } },
+    });
+  }
+
+  updateCategory(id: number, data: any) {
+    return this.prisma.category.update({ where: { id }, data });
+  }
+
+  async deleteCategory(id: number) {
+    const count = await this.prisma.product.count({ where: { categoryId: id, deletedAt: null } });
+    if (count > 0) throw new NotFoundException('لا يمكن حذف تصنيف يحوي منتجات');
+    await this.prisma.category.delete({ where: { id } });
+    return { id, deleted: true };
+  }
+
+  // إضافة صور لمنتج
+  async addImages(productId: number, urls: string[]) {
+    await this.ensureProduct(productId);
+    const start = await this.prisma.productImage.count({ where: { productId } });
+    await this.prisma.productImage.createMany({
+      data: urls.map((url, i) => ({ productId, imageUrl: url, sortOrder: start + i })),
+    });
+    return this.prisma.productImage.findMany({ where: { productId }, orderBy: { sortOrder: 'asc' } });
+  }
+
+  async removeImage(imageId: number) {
+    await this.prisma.productImage.delete({ where: { id: imageId } });
+    return { id: imageId, deleted: true };
+  }
+
+  // متغيرات
+  addVariant(productId: number, v: any) {
+    return this.prisma.productVariant.create({
+      data: {
+        productId,
+        sku: v.sku,
+        size: v.size,
+        color: v.color,
+        price: v.price,
+        stockQuantity: v.stockQuantity ?? 0,
+        minStockAlert: v.minStockAlert ?? 0,
+      },
+    });
+  }
+
+  updateVariant(id: number, data: any) {
+    return this.prisma.productVariant.update({ where: { id }, data });
+  }
+
+  async removeVariant(id: number) {
+    await this.prisma.productVariant.update({ where: { id }, data: { isActive: false } });
+    return { id, deleted: true };
+  }
+
+  async adminGetProduct(id: number) {
+    const p = await this.prisma.product.findFirst({
+      where: { id, deletedAt: null },
+      include: { variants: true, images: { orderBy: { sortOrder: 'asc' } }, category: true },
+    });
+    if (!p) throw new NotFoundException('المنتج غير موجود');
+    return p;
+  }
+
   // قائمة إدارية تشمل غير المنشورة
   adminListProducts() {
     return this.prisma.product.findMany({

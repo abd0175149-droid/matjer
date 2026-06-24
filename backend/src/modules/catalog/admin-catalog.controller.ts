@@ -13,6 +13,12 @@ export class AdminCatalogController {
     return this.catalog.adminListProducts();
   }
 
+  @Get('products/:id')
+  @RequirePermissions('products.read')
+  get(@Param('id', ParseIntPipe) id: number) {
+    return this.catalog.adminGetProduct(id);
+  }
+
   @Post('products')
   @RequirePermissions('products.write')
   create(@Body() dto: CreateProductDto) {
@@ -31,9 +37,59 @@ export class AdminCatalogController {
     return this.catalog.deleteProduct(id);
   }
 
+  @Get('categories-admin')
+  @RequirePermissions('products.read')
+  listCategories() {
+    return this.catalog.adminListCategories();
+  }
+
   @Post('categories')
   @RequirePermissions('products.write')
   createCategory(@Body() dto: CreateCategoryDto) {
     return this.catalog.createCategory(dto);
+  }
+
+  @Patch('categories/:id')
+  @RequirePermissions('products.write')
+  updateCategory(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    return this.catalog.updateCategory(id, body);
+  }
+
+  @Delete('categories/:id')
+  @RequirePermissions('products.write')
+  removeCategory(@Param('id', ParseIntPipe) id: number) {
+    return this.catalog.deleteCategory(id);
+  }
+
+  // صور المنتج
+  @Post('products/:id/images')
+  @RequirePermissions('products.write')
+  addImages(@Param('id', ParseIntPipe) id: number, @Body() body: { urls: string[] }) {
+    return this.catalog.addImages(id, body.urls || []);
+  }
+
+  @Delete('images/:imageId')
+  @RequirePermissions('products.write')
+  removeImage(@Param('imageId', ParseIntPipe) imageId: number) {
+    return this.catalog.removeImage(imageId);
+  }
+
+  // متغيرات
+  @Post('products/:id/variants')
+  @RequirePermissions('products.write')
+  addVariant(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    return this.catalog.addVariant(id, body);
+  }
+
+  @Patch('variants/:id')
+  @RequirePermissions('products.write')
+  updateVariant(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    return this.catalog.updateVariant(id, body);
+  }
+
+  @Delete('variants/:id')
+  @RequirePermissions('products.write')
+  removeVariant(@Param('id', ParseIntPipe) id: number) {
+    return this.catalog.removeVariant(id);
   }
 }

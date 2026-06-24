@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { OrderStatus, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { SettingsService } from '../settings/settings.service';
+import { CouponsService } from '../coupons/coupons.service';
 import { CreateOrderDto, UpdateStatusDto } from './dto/orders.dto';
 
 // آلة حالات الطلب (mds/06)
@@ -20,6 +22,8 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private inventory: InventoryService,
+    private settings: SettingsService,
+    private coupons: CouponsService,
   ) {}
 
   private async nextOrderNumber(tx: Prisma.TransactionClient): Promise<string> {
@@ -66,10 +70,20 @@ export class OrdersService {
         };
       });
 
-      const shippingCost = 0; // MVP: شحن ثابت (errata G4/G5: قابل للتوسعة عبر SettingsModule)
-      const taxAmount = 0;
-      const discount = 0;
-      const total = subtotal + shippingCost + taxAmount - discount;
+      // الشحن والضريبة من الإعدادات (errata G4/G5)
+      const { shippingCost, taxAmount } = await this.settings.computeCharges(subtotal);
+
+      // الكوبون (اختياري)
+      let discount = 0;
+      let couponId: number | null = null;
+      if (dto.couponCode) {
+        const res = await this.coupons.validate(dto.couponCode, subtotal);
+        discount = res.discount;
+        couponId = res.couponId;
+        await this.coupons.incrementUsage(tx, couponId);
+      }
+
+      const total = +(subtotal + shippingCost + taxAmount - discount).toFixed(2);
 
       const address = await tx.address.create({
         data: {
@@ -94,6 +108,7 @@ export class OrdersService {
           shippingCost,
           taxAmount,
           total,
+          couponId,
           paymentMethod: dto.paymentMethod,
           paymentStatus: 'UNPAID',
           shippingAddressId: address.id,
