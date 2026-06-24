@@ -86,6 +86,14 @@ export default function AddToCart({ productName, slug, image, variants }: Props)
           اشترِ الآن
         </button>
       </div>
+
+      {/* شريط لاصق على الجوال (mds/13 — sticky add-to-cart) */}
+      <div className="fixed bottom-0 inset-x-0 z-30 sm:hidden glass border-t p-3 flex items-center gap-3">
+        <div className="font-extrabold text-gold-deep">{money(variant.price)}</div>
+        <button className="btn-gold flex-1" onClick={onAdd} disabled={available < 1}>
+          {done ? '✓ أُضيف للسلة' : 'أضف إلى السلة'}
+        </button>
+      </div>
     </div>
   );
 }

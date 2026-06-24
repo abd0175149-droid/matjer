@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 import { useCart } from '@/store/cart';
 import { apiPost } from '@/lib/api';
 import { money } from '@/lib/format';
@@ -43,7 +45,9 @@ export default function CheckoutPage() {
   if (done) {
     return (
       <div className="max-w-2xl mx-auto px-4 my-16 text-center">
-        <div className="text-5xl mb-4">✅</div>
+        <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 12 }} className="inline-block mb-4 text-success">
+          <CheckCircle2 size={72} strokeWidth={1.5} />
+        </motion.div>
         <h1 className="text-2xl font-extrabold mb-2">تم استلام طلبك!</h1>
         <p className="text-black/60 mb-1">رقم الطلب: <b>{done.orderNumber}</b></p>
         <p className="text-black/60 mb-6">احتفظ برمز التتبّع: <b className="break-all">{done.uuid}</b></p>

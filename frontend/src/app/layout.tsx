@@ -12,8 +12,15 @@ const tajawal = Tajawal({
 });
 
 export const metadata: Metadata = {
-  title: 'متجر — إكسسوارات الذهب التقليدي',
+  metadataBase: new URL(process.env.SITE_URL || 'https://sooq.grade.sbs'),
+  title: { default: 'متجر — إكسسوارات الذهب التقليدي', template: '%s — متجر الذهب' },
   description: 'متجر إلكتروني لإكسسوارات الذهب التقليدي (الروسي والصيني): أطقم، خواتم، أساور، قلادات.',
+  openGraph: {
+    title: 'متجر — إكسسوارات الذهب التقليدي',
+    description: 'أطقم وخواتم وأساور وقلادات ذهب تقليدي بأسعار ثابتة.',
+    type: 'website',
+    locale: 'ar',
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

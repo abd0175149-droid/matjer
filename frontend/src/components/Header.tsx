@@ -41,7 +41,20 @@ export default function Header() {
 
         <div className="hidden md:block flex-1 max-w-sm"><SearchBox /></div>
 
-        <nav className="hidden lg:flex items-center gap-4 text-sm font-medium">
+        <nav className="hidden lg:flex items-center gap-5 text-sm font-medium">
+          <div className="relative group">
+            <button className="hover:text-gold-deep transition py-2">التصنيفات ▾</button>
+            <div className="absolute top-full start-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              <div className="card card-luxe p-3 grid grid-cols-2 gap-2 w-72">
+                {CATS.map((c) => (
+                  <Link key={c.slug} href={`/category/${c.slug}`} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition">
+                    <span className="w-9 h-9 rounded-lg bg-gold-soft grid place-items-center text-gold-deep font-bold">{c.name[0]}</span>
+                    <span className="font-bold">{c.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
           {CATS.map((c) => (
             <Link key={c.slug} href={`/category/${c.slug}`} className="hover:text-gold-deep transition relative after:absolute after:bottom-[-4px] after:start-0 after:h-0.5 after:w-0 after:bg-gold after:transition-all hover:after:w-full">{c.name}</Link>
           ))}
