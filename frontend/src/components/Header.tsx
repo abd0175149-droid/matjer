@@ -6,6 +6,7 @@ import { useCart } from '@/store/cart';
 import { useAuth } from '@/store/auth';
 import SearchBox from '@/components/SearchBox';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import NotificationBell from '@/components/NotificationBell';
 
 const CATS = [
   { slug: 'sets', name: 'أطقم' },
@@ -62,6 +63,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-1">
+          <NotificationBell />
           <ThemeSwitcher />
           <Link href={mounted && user ? '/account' : '/login'} className="w-9 h-9 grid place-items-center rounded-lg hover:bg-muted transition" aria-label="حسابي"><User size={18} /></Link>
           <button onClick={openCart} className="relative w-9 h-9 grid place-items-center rounded-lg hover:bg-muted transition" aria-label="السلة">

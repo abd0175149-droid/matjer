@@ -100,12 +100,14 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
 
-  role      Role      @relation(fields: [roleId], references: [id])
-  orders    Order[]
-  addresses Address[]
-  wishlists Wishlist[]
-  reviews   Review[]
-  auditLogs AuditLog[]
+  role          Role           @relation(fields: [roleId], references: [id])
+  orders        Order[]
+  addresses     Address[]
+  wishlists     Wishlist[]
+  reviews       Review[]
+  auditLogs     AuditLog[]
+  pushTokens    PushToken[]
+  notifications Notification[]
 
   @@index([roleId])
   @@map("users")
@@ -434,4 +436,34 @@ model Banner {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("banners")
+}
+
+// رموز FCM لدفع الإشعارات (mds/09 + errata R-7)
+model PushToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int?     @map("user_id")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+// إشعارات داخل الموقع (mds/09 §3)
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String
+  body      String?
+  data      Json?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
 }

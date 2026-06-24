@@ -4,7 +4,18 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { SettingsService } from '../settings/settings.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto, UpdateStatusDto } from './dto/orders.dto';
+
+// رسائل الإشعار لكل حالة (mds/06 §5)
+const STATUS_MSG: Partial<Record<OrderStatus, { title: string; body: string }>> = {
+  CONFIRMED: { title: 'تم تأكيد طلبك ✅', body: 'تم تأكيد طلبك رقم' },
+  PROCESSING: { title: 'جارٍ تجهيز طلبك 📦', body: 'نُجهّز طلبك رقم' },
+  SHIPPED: { title: 'تم شحن طلبك 🚚', body: 'شُحن طلبك رقم' },
+  DELIVERED: { title: 'تم تسليم طلبك 🎉', body: 'سُلّم طلبك رقم' },
+  CANCELLED: { title: 'تم إلغاء طلبك', body: 'أُلغي طلبك رقم' },
+  RETURNED: { title: 'تم تسجيل الإرجاع', body: 'سُجّل إرجاع طلبك رقم' },
+};
 
 // آلة حالات الطلب (mds/06)
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -24,6 +35,7 @@ export class OrdersService {
     private inventory: InventoryService,
     private settings: SettingsService,
     private coupons: CouponsService,
+    private notifications: NotificationsService,
   ) {}
 
   private async nextOrderNumber(tx: Prisma.TransactionClient): Promise<string> {
@@ -125,7 +137,7 @@ export class OrdersService {
 
   // ─────────── الانتقال بين الحالات ───────────
   async transition(orderId: number, dto: UpdateStatusDto, userId?: number) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // اقفل الطلب أولاً ثم المتغيرات (ترتيب قفل ثابت — errata R-2)
       await tx.$queryRaw(Prisma.sql`SELECT id FROM orders WHERE id = ${orderId} FOR UPDATE`);
 
@@ -173,8 +185,18 @@ export class OrdersService {
           statusHistory: { create: [{ status: dto.status, changedBy: userId, note: dto.note }] },
         },
       });
-      return { id: updated.id, status: updated.status, paymentStatus: updated.paymentStatus };
+      return {
+        id: updated.id, status: updated.status, paymentStatus: updated.paymentStatus,
+        customerId: order.customerId, orderNumber: order.orderNumber, uuid: order.uuid,
+      };
     });
+
+    // إشعار العميل بعد نجاح الـ commit (mds/06 §5)
+    const msg = STATUS_MSG[dto.status];
+    if (msg && result.customerId) {
+      await this.notifications.notifyUser(result.customerId, msg.title, `${msg.body} ${result.orderNumber}`, { uuid: result.uuid, status: dto.status });
+    }
+    return { id: result.id, status: result.status, paymentStatus: result.paymentStatus };
   }
 
   // ─────────── استعلامات ───────────

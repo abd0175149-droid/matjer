@@ -23,6 +23,7 @@ import { ProcurementModule } from './modules/procurement/procurement.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ContentModule } from './modules/content/content.module';
 import { CrmModule } from './modules/crm/crm.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { CrmModule } from './modules/crm/crm.module';
     ReportsModule,
     ContentModule,
     CrmModule,
+    NotificationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
