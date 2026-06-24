@@ -28,8 +28,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning className={tajawal.variable}>
-      <head>{brand && <style dangerouslySetInnerHTML={{ __html: brand }} />}</head>
       <body className="font-sans min-h-screen flex flex-col antialiased">
+        {/* لا تستخدم <head> يدوياً في App Router — يُحقن الستايل كعنصر يرفعه Next تلقائياً */}
+        {brand && <style dangerouslySetInnerHTML={{ __html: brand }} />}
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
